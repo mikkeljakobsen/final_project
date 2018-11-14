@@ -5,17 +5,55 @@
 using namespace cv;
 using namespace std;
 
+namespace
+{
+    // windows and trackbars name
+    const std::string windowName = "Hough Circle Detection Demo";
+    const std::string cannyThresholdTrackbarName = "Canny threshold";
+    const std::string accumulatorThresholdTrackbarName = "Accumulator Threshold";
+    const std::string usage = "Usage : tutorial_HoughCircle_Demo <path_to_input_image>\n";
+
+    // initial and max values of the parameters of interests.
+    const int cannyThresholdInitialValue = 100;
+    const int accumulatorThresholdInitialValue = 50;
+    const int maxAccumulatorThreshold = 200;
+    const int maxCannyThreshold = 255;
+
+    void HoughDetection(const Mat& src_gray, const Mat& src_display, int cannyThreshold, int accumulatorThreshold)
+    {
+        // will hold the results of the detection
+        std::vector<Vec3f> circles;
+        // runs the actual detection
+        HoughCircles( src_gray, circles, HOUGH_GRADIENT, 1, src_gray.rows/8, cannyThreshold, accumulatorThreshold, 0, 0 );
+
+        // clone the colour, input image for displaying purposes
+        Mat display = src_display.clone();
+        for( size_t i = 0; i < circles.size(); i++ )
+        {
+            Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+            int radius = cvRound(circles[i][2]);
+            // circle center
+            circle( display, center, 3, Scalar(0,255,0), -1, 8, 0 );
+            // circle outline
+            circle( display, center, radius, Scalar(0,0,255), 3, 8, 0 );
+        }
+
+        // shows the results
+        imshow( windowName, display);
+    }
+}
+
  int main()
  {
     namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 
     int iLowH = 0;
-    int iHighH = 179;
+    int iHighH = 15;
 
-    int iLowS = 0;
-    int iHighS = 255;
+    int iLowS = 170;
+    int iHighS = 220;
 
-    int iLowV = 0;
+    int iLowV = 80;
     int iHighV = 255;
 
     //Create trackbars in "Control" window
@@ -27,9 +65,19 @@ using namespace std;
 
     cvCreateTrackbar("LowV", "Control", &iLowV, 255); //Value (0 - 255)
     cvCreateTrackbar("HighV", "Control", &iHighV, 255);
-    String folderpath = "../images/marker_color/marker_color_*.png";
+    String folderpath = "../images/marker_color_hard/marker_color_*.png";
     vector<String> filenames;
     glob(folderpath, filenames);
+
+    //declare and initialize both parameters that are subjects to change
+    int cannyThreshold = cannyThresholdInitialValue;
+    int accumulatorThreshold = accumulatorThresholdInitialValue;
+    Mat src, src_gray;
+
+    // create the main window, and attach the trackbars
+    namedWindow( windowName, WINDOW_AUTOSIZE );
+    createTrackbar(cannyThresholdTrackbarName, windowName, &cannyThreshold,maxCannyThreshold);
+    createTrackbar(accumulatorThresholdTrackbarName, windowName, &accumulatorThreshold, maxAccumulatorThreshold);
 
 
     while (true)
@@ -56,6 +104,20 @@ using namespace std;
 
             imshow("Thresholded Image", imgThresholded); //show the thresholded image
             imshow("Original", imgOriginal); //show the original image
+
+            src_gray = imgThresholded.clone();
+
+            // Reduce the noise so we avoid false circle detection
+            GaussianBlur( src_gray, src_gray, Size(9, 9), 2, 2 );
+
+            // those parameters cannot be =0
+            // so we must check here
+            cannyThreshold = std::max(cannyThreshold, 1);
+            accumulatorThreshold = std::max(accumulatorThreshold, 1);
+
+            //runs the detection, and update the display
+            HoughDetection(src_gray, imgOriginal, cannyThreshold, accumulatorThreshold);
+
 
             if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
             {
