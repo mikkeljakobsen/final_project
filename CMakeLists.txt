@@ -13,8 +13,8 @@ if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GN
   add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wcast-qual -Wcast-align)
 endif()
 # Target executable
-add_executable(${PROJECT_NAME} "main.cpp")
-add_executable(${PROJECT_NAME}2 "test.cpp")
+add_executable(COLOR "color.cpp")
+add_executable(TEST "test.cpp")
 
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
-target_link_libraries(${PROJECT_NAME}2 ${OpenCV_LIBS})
+target_link_libraries(COLOR ${OpenCV_LIBS})
+target_link_libraries(TEST ${OpenCV_LIBS})

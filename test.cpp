@@ -14,9 +14,9 @@ namespace
     const std::string usage = "Usage : tutorial_HoughCircle_Demo <path_to_input_image>\n";
 
     // initial and max values of the parameters of interests.
-    const int cannyThresholdInitialValue = 100;
-    const int accumulatorThresholdInitialValue = 50;
-    const int maxAccumulatorThreshold = 200;
+    const int cannyThresholdInitialValue = 80;
+    const int accumulatorThresholdInitialValue = 17;
+    const int maxAccumulatorThreshold = 50;
     const int maxCannyThreshold = 255;
 
     void HoughDetection(const Mat& src_gray, const Mat& src_display, int cannyThreshold, int accumulatorThreshold)
@@ -24,7 +24,7 @@ namespace
         // will hold the results of the detection
         std::vector<Vec3f> circles;
         // runs the actual detection
-        HoughCircles( src_gray, circles, HOUGH_GRADIENT, 1, src_gray.rows/8, cannyThreshold, accumulatorThreshold, 0, 0 );
+        HoughCircles( src_gray, circles, HOUGH_GRADIENT, 1, src_gray.rows/12, cannyThreshold, accumulatorThreshold, 30, 60);
 
         // clone the colour, input image for displaying purposes
         Mat display = src_display.clone();
@@ -47,14 +47,14 @@ namespace
  {
     namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 
-    int iLowH = 0;
-    int iHighH = 15;
+    int iLowH = 110;
+    int iHighH = 130;
 
-    int iLowS = 170;
-    int iHighS = 220;
+    int iLowS = 70;
+    int iHighS = 180;
 
-    int iLowV = 80;
-    int iHighV = 255;
+    int iLowV = 35;
+    int iHighV = 180;
 
     //Create trackbars in "Control" window
     cvCreateTrackbar("LowH", "Control", &iLowH, 179); //Hue (0 - 179)
@@ -65,7 +65,7 @@ namespace
 
     cvCreateTrackbar("LowV", "Control", &iLowV, 255); //Value (0 - 255)
     cvCreateTrackbar("HighV", "Control", &iHighV, 255);
-    String folderpath = "../images/marker_color_hard/marker_color_*.png";
+    String folderpath = "../final_project/images/marker_color_hard/marker_color_*.png";
     vector<String> filenames;
     glob(folderpath, filenames);
 
@@ -84,6 +84,8 @@ namespace
     {
         for (size_t i=0; i<filenames.size(); i++)
         {
+            while (true){
+
             Mat imgOriginal = imread(filenames[i], IMREAD_COLOR);
 
             Mat imgHSV;
@@ -95,17 +97,18 @@ namespace
             inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
 
             //morphological opening (remove small objects from the foreground)
-            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
-            dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)) );
+            dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)) );
 
             //morphological closing (fill small holes in the foreground)
-            dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
-            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+            dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)) );
+            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)) );
 
             imshow("Thresholded Image", imgThresholded); //show the thresholded image
             imshow("Original", imgOriginal); //show the original image
 
             src_gray = imgThresholded.clone();
+            //cvtColor( imgOriginal, src_gray, CV_BGR2GRAY );
 
             // Reduce the noise so we avoid false circle detection
             GaussianBlur( src_gray, src_gray, Size(9, 9), 2, 2 );
@@ -118,11 +121,11 @@ namespace
             //runs the detection, and update the display
             HoughDetection(src_gray, imgOriginal, cannyThreshold, accumulatorThreshold);
 
-
             if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
             {
                 cout << "esc key is pressed by user" << endl;
                 break;
+            }
             }
         }
     }
