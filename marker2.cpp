@@ -1,16 +1,9 @@
-/**
- * @file HoughCircle_Demo.cpp
- * @brief Demo code for Hough Transform
- * @author OpenCV team
- */
-
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/imgproc.hpp"
 #include <iostream>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
-using namespace std;
 using namespace cv;
+using namespace std;
 
 namespace
 {
@@ -21,9 +14,9 @@ namespace
     const std::string usage = "Usage : tutorial_HoughCircle_Demo <path_to_input_image>\n";
 
     // initial and max values of the parameters of interests.
-    const int cannyThresholdInitialValue = 100;
-    const int accumulatorThresholdInitialValue = 50;
-    const int maxAccumulatorThreshold = 200;
+    const int cannyThresholdInitialValue = 80;
+    const int accumulatorThresholdInitialValue = 17;
+    const int maxAccumulatorThreshold = 50;
     const int maxCannyThreshold = 255;
 
     void HoughDetection(const Mat& src_gray, const Mat& src_display, int cannyThreshold, int accumulatorThreshold)
@@ -31,7 +24,7 @@ namespace
         // will hold the results of the detection
         std::vector<Vec3f> circles;
         // runs the actual detection
-        HoughCircles( src_gray, circles, HOUGH_GRADIENT, 1, src_gray.rows/8, cannyThreshold, accumulatorThreshold, 0, 0 );
+        HoughCircles( src_gray, circles, HOUGH_GRADIENT, 1, src_gray.rows/12, cannyThreshold, accumulatorThreshold, 30, 60);
 
         // clone the colour, input image for displaying purposes
         Mat display = src_display.clone();
@@ -50,58 +43,102 @@ namespace
     }
 }
 
+ int main()
+ {
+    namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 
-int main(int argc, char** argv)
-{
-    Mat src, src_gray;
+    int rho = 1;
+    int theta = 1;
+    int line_threshold = 0;
+    int minLineLength = 180;
+    int maxLineGap = 0;
 
-    // Read the image
-    String imageName("../images/marker_color/marker_color_01.png"); // by default
-    if (argc > 1)
-    {
-       imageName = argv[1];
-    }
-    src = imread( imageName, IMREAD_COLOR );
+    //Create trackbars in "Control" window
+    cvCreateTrackbar("Rho", "Control", &rho, 255);
+    cvCreateTrackbar("Degrees", "Control", &theta, 180);
+    cvCreateTrackbar("Line threshold", "Control", &line_threshold, 255);
+    cvCreateTrackbar("Min line length", "Control", &minLineLength, 1000);
+    cvCreateTrackbar("Max line length", "Control", &maxLineGap, 255);
 
-    if( src.empty() )
-    {
-        std::cerr<<"Invalid input image\n";
-        std::cout<<usage;
-        return -1;
-    }
-
-    // Convert it to gray
-    cvtColor( src, src_gray, COLOR_BGR2GRAY );
-
-    // Reduce the noise so we avoid false circle detection
-    GaussianBlur( src_gray, src_gray, Size(9, 9), 2, 2 );
-
-    //declare and initialize both parameters that are subjects to change
-    int cannyThreshold = cannyThresholdInitialValue;
-    int accumulatorThreshold = accumulatorThresholdInitialValue;
+    String folderpath = "../final_project/images/marker_thinline_hard/marker_thinline_hard_*.png";
+    vector<String> filenames;
+    glob(folderpath, filenames);
 
     // create the main window, and attach the trackbars
     namedWindow( windowName, WINDOW_AUTOSIZE );
-    createTrackbar(cannyThresholdTrackbarName, windowName, &cannyThreshold,maxCannyThreshold);
-    createTrackbar(accumulatorThresholdTrackbarName, windowName, &accumulatorThreshold, maxAccumulatorThreshold);
 
-    // infinite loop to display
-    // and refresh the content of the output image
-    // until the user presses q or Q
-    char key = 0;
-    while(key != 'q' && key != 'Q')
+    while (true)
     {
-        // those parameters cannot be =0
-        // so we must check here
-        cannyThreshold = std::max(cannyThreshold, 1);
-        accumulatorThreshold = std::max(accumulatorThreshold, 1);
+        for (size_t i=0; i<filenames.size(); i++)
+        {
+            while (true){
 
-        //runs the detection, and update the display
-        HoughDetection(src_gray, src, cannyThreshold, accumulatorThreshold);
+            Mat imgOriginal = imread(filenames[i], IMREAD_COLOR);
 
-        // get user key
-        key = (char)waitKey(10);
+            Mat imgGray;
+
+            cvtColor(imgOriginal, imgGray, COLOR_BGR2GRAY); //Convert the captured frame from BGR to HSV
+
+            Mat imgThresholded;
+
+            threshold(imgGray,imgThresholded, 170, 255, 2);
+            //cvtColor(imgThresholded, imgHSV, COLOR_GRAY2BGR);
+            //cvtColor(imgHSV, imgHSV, COLOR_BGR2HSV);
+
+
+            //morphological closing (fill small holes in the foreground)
+            //dilate( imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)) );
+            //erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(10, 10)) );
+
+
+            Mat imgHSV;// (imgThresholded.size(), CV_8U);
+            inRange(imgThresholded, Scalar(0, 0, 0), Scalar(155, 255, 255), imgHSV); //Threshold the image
+            //imshow("HSV", imgHSV);
+            //imgHSV.convertTo(imgHSV, CV_8UC1);
+            //imgThresholded = imgThresholded(imgHSV);
+
+            //morphological opening (remove small objects from the foreground)
+            //
+            //dilate( imgHSV, imgHSV, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+            //erode(imgHSV, imgHSV, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+            //imshow("HSV2", imgHSV);
+            Mat imgHSV_32 = imgHSV.clone();
+            Mat imgThresholded_32 = imgThresholded.clone();
+            imgHSV_32.convertTo(imgHSV_32, CV_32FC1);
+            imgThresholded_32.convertTo(imgThresholded_32, CV_32FC1);
+
+            Mat imgProduct = imgHSV_32.mul(imgThresholded_32);
+            imgProduct.convertTo(imgProduct, CV_32FC1, 1.0f/65025.0f * 255);
+            imgProduct.convertTo(imgProduct, CV_8UC1);
+
+            inRange(imgProduct, Scalar(80, 0, 0), Scalar(150, 255, 255), imgProduct); //Threshold the image
+
+            imshow( windowName, imgProduct);
+
+            // Reduce the noise so we avoid false circle detection
+            GaussianBlur( imgProduct, imgProduct, Size(9, 9), 2, 2 );
+            vector<Vec4i> lines;
+
+            HoughLinesP(imgProduct, lines, rho, CV_PI / 180 * (double) theta, line_threshold, minLineLength, maxLineGap);
+            for( size_t i = 0; i < lines.size(); i++ )
+            {
+                line( imgOriginal, Point(lines[i][0], lines[i][1]),
+                    Point(lines[i][2], lines[i][3]), Scalar(0,0,255), 3, 8 );
+            }
+
+
+            imshow("Lines", imgOriginal);
+
+
+            if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
+            {
+                cout << "esc key is pressed by user" << endl;
+                break;
+            }
+            }
+        }
     }
 
-    return 0;
+   return 0;
+
 }
