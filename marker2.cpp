@@ -11,7 +11,7 @@
 
 using namespace std;
 using namespace cv;
-
+// https://stackoverflow.com/questions/44449871/fine-tuning-hough-line-function-parameters-opencv
 namespace
 {
     // windows and trackbars name

@@ -75,3 +75,7 @@ Thumbs.db
 CMakeLists\.txt\.user
 
 build-SamplePluginPA10-Desktop-Default/
+
+images/marker_thinline_hard/
+
+images/marker_thinline/
