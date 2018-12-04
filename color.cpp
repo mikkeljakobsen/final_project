@@ -151,7 +151,7 @@ vector<Point2f> findCircles(const Mat& binaryImg, Mat& outputImg, Scalar color)
 
             bluePoints.erase(bluePoints.begin()+index_max_dist);
             angles.erase(angles.begin()+index_max_dist);
-            if(angles[0] - diagonal_angle > angles[1] - diagonal_angle && angles[1] - diagonal_angle)
+            if(angles[0] - diagonal_angle > angles[1] - diagonal_angle)
             {
                 drawMarker(imgOutput, bluePoints[0], Scalar(0, 255, 0), MARKER_CROSS);
                 drawMarker(imgOutput, bluePoints[1], Scalar(0, 0, 255), MARKER_CROSS);
