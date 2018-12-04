@@ -47,17 +47,18 @@ namespace
  {
     namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 
-    int iLowH = 110;
-    int iHighH = 130;
+    int iLowH = 0;
+    int iHighH = 255;
 
-    int iLowS = 70;
-    int iHighS = 180;
+    int iLowS = 0;
+    int iHighS = 70;
 
-    int iLowV = 35;
-    int iHighV = 180;
+    int iLowV = 40;
+    int iHighV = 255;
 
     //Create trackbars in "Control" window
     cvCreateTrackbar("LowH", "Control", &iLowH, 179); //Hue (0 - 179)
+
     cvCreateTrackbar("HighH", "Control", &iHighH, 179);
 
     cvCreateTrackbar("LowS", "Control", &iLowS, 255); //Saturation (0 - 255)
@@ -65,7 +66,7 @@ namespace
 
     cvCreateTrackbar("LowV", "Control", &iLowV, 255); //Value (0 - 255)
     cvCreateTrackbar("HighV", "Control", &iHighV, 255);
-    String folderpath = "../final_project/images/marker_color_hard/marker_color_*.png";
+    String folderpath = "../final_project/images/marker_thinline_hard/marker_thinline_*.png";
     vector<String> filenames;
     glob(folderpath, filenames);
 
