@@ -27,7 +27,6 @@ void removeOutlierPoints(vector<Point>& truePoints, vector<Point>& falsePoints, 
 }
 
 bool compareLines (Vec2f i, Vec2f j) { return (i[0] > j[0] ); }
-bool sortDescending (size_t i, size_t j) { return (i > j ); }
 
 vector<Point> sortIntersectionPoints(vector<Point>& candidates)
 {
@@ -161,7 +160,6 @@ vector<Point> findThinLineMarkerPoints(Mat& imgOriginal)
     Mat imgProduct = imgHSV_32.mul(imgGray_32);
     imgProduct.convertTo(imgProduct, CV_32FC1, 1.0f/65025.0f * 255);
     imgProduct.convertTo(imgProduct, CV_8UC1);
-    Mat imgCorner = imgProduct.clone();
 
     // Reduce the noise
     GaussianBlur( imgProduct, imgProduct, Size(9, 9), 2, 2 );
