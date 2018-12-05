@@ -5,6 +5,26 @@
 using namespace cv;
 using namespace std;
 
+Point2f getDirection(Point2f a, Point2f b)
+{
+    Point2f direction = a-b;
+    float mag = std::sqrt((float)(direction.x*direction.x + direction.y*direction.y));
+    direction.x /= mag;
+    direction.y /= mag;
+    return direction;
+}
+
+float getDistance(Point2f a, Point2f b)
+{
+    Point2f direction = a-b;
+    return std::sqrt((float)(direction.x*direction.x + direction.y*direction.y));
+}
+
+float getAngle(Point2f a, Point2f b)
+{
+    return atan2(a.y-b.y, a.x-b.x);
+}
+
 void redFilter(const Mat& src, Mat& imgThresholded)
 {
     Mat imgHSV;
@@ -39,7 +59,8 @@ void blueFilter(const Mat& src, Mat& imgThresholded)
 
 }
 
-vector<Point2f> findCircles(const Mat& binaryImg, Mat& outputImg, Scalar color)
+// adapted from https://www.learnopencv.com/find-center-of-blob-centroid-using-opencv-cpp-python/
+vector<Point2f> findCircles(const Mat& binaryImg, Mat& outputImg, Scalar color, size_t PoI)
 {
     Mat blurredImg;
     vector<vector<Point> > contours;
@@ -91,13 +112,62 @@ vector<Point2f> findCircles(const Mat& binaryImg, Mat& outputImg, Scalar color)
         if (circlePerimeter < 215 && abs(realPerimeter - circlePerimeter) > 0.1 * realPerimeter)
             continue;
 
-        //cout << i << ": real perimeter: " << realPerimeter << " circle perimeter: " << circlePerimeter << " - " << contours_poly.size() << " area: " << realArea << endl;
-
-        drawContours(outputImg, contours, i, color, 2, 8, hierarchy, 0, Point());
-        circle( outputImg, mc[i], 4, color, -1, 8, 0 );
-        rectangle( outputImg, boundRect.tl(), boundRect.br(), color, 2, 8, 0 );
+        //drawContours(outputImg, contours, i, color, 2, 8, hierarchy, 0, Point());
+        //circle( outputImg, mc[i], 4, color, -1, 8, 0 );
+        //rectangle( outputImg, boundRect.tl(), boundRect.br(), color, 2, 8, 0 );
         finalPoints.push_back(mc[i]);
+        if (finalPoints.size() == PoI)
+            break;
 
+    }
+    return finalPoints;
+}
+
+vector<Point2f> findColorMarkerPoints(Mat& imgOriginal)
+{
+    Mat imgBinaryRed, imgBinaryBlue;
+
+    redFilter(imgOriginal, imgBinaryRed);
+    blueFilter(imgOriginal, imgBinaryBlue);
+
+    Mat imgOutput = imgOriginal.clone();
+    Point2f redPoint = findCircles(imgBinaryRed, imgOutput, Scalar(0,0,255), 1)[0];
+    vector<Point2f> bluePoints = findCircles(imgBinaryBlue, imgOutput, Scalar(255,0,0), 3);
+
+    float max_dist = 0;
+    size_t index_max_dist;
+
+
+    for (size_t j = 0; j < bluePoints.size(); j++)
+    {
+        float dist = getDistance(redPoint, bluePoints[j]);
+        if (dist > max_dist)
+        {
+            max_dist = dist;
+            index_max_dist = j;
+        }
+    }
+
+    Point2f bluePointDiagonal = bluePoints[index_max_dist];
+    bluePoints.erase(bluePoints.begin()+index_max_dist);
+    vector<Point2f> finalPoints;
+    finalPoints.push_back(redPoint);
+    finalPoints.push_back(bluePointDiagonal);
+    Point2f diagonalDirection = getDirection(redPoint, bluePointDiagonal);
+    Point2f perpendicularDirection = Point2f (-diagonalDirection.y, diagonalDirection.x);
+    Point2f perpendicularPoint = redPoint + perpendicularDirection * 100;
+
+
+    if(getDistance(bluePoints[0], perpendicularPoint) >
+           getDistance(bluePoints[0], redPoint))
+    {
+        finalPoints.push_back(bluePoints[0]);
+        finalPoints.push_back(bluePoints[1]);
+    }
+    else
+    {
+        finalPoints.push_back(bluePoints[1]);
+        finalPoints.push_back(bluePoints[0]);
     }
     return finalPoints;
 }
@@ -114,55 +184,20 @@ vector<Point2f> findCircles(const Mat& binaryImg, Mat& outputImg, Scalar color)
         for (size_t i=0; i<filenames.size(); i++)
         {
             Mat imgOriginal = imread(filenames[i], IMREAD_COLOR);
-            Mat imgBinaryRed, imgBinaryBlue;
 
-            redFilter(imgOriginal, imgBinaryRed);
-            blueFilter(imgOriginal, imgBinaryBlue);
+            vector<Point2f> markerPoints = findColorMarkerPoints(imgOriginal);
+            vector<Scalar> colors;
+            colors.push_back(Scalar(255, 255, 255));
+            colors.push_back(Scalar(0, 0, 255));
+            colors.push_back(Scalar(0, 255, 0));
+            colors.push_back(Scalar(255, 0, 0));
 
-            Mat imgOutput = imgOriginal.clone();
-            vector<Point2f> redPoint = findCircles(imgBinaryRed, imgOutput, Scalar(0,0,255));
-            vector<Point2f> bluePoints = findCircles(imgBinaryBlue, imgOutput, Scalar(255,0,0));
-            vector<float> dists;
-            vector<float> angles;
-            float max_dist = 0;
-            size_t index_max_dist;
-
-
-            for (size_t j = 0; j < bluePoints.size(); j++)
+            for (size_t j=0; j < markerPoints.size(); j++)
             {
-                Point2f diff = redPoint[0]-bluePoints[j];
-                float dist = std::sqrt((float)(diff.x*diff.x + diff.y*diff.y));
-                dists.push_back(dist);
-                float angle = atan2(redPoint[0].y-bluePoints[j].y, redPoint[0].x-bluePoints[j].x);
-
-
-                angles.push_back(angle);
-                if (dist > max_dist)
-                {
-                    max_dist = dist;
-                    index_max_dist = j;
-                }
+                drawMarker(imgOriginal, markerPoints[j], colors[j]);
             }
 
-
-            Point2f bluePointDiagonal = bluePoints[index_max_dist];
-            float diagonal_angle = angles[index_max_dist];
-            drawMarker(imgOutput, bluePointDiagonal, Scalar(255, 0, 0), MARKER_CROSS);
-
-            bluePoints.erase(bluePoints.begin()+index_max_dist);
-            angles.erase(angles.begin()+index_max_dist);
-            if(angles[0] - diagonal_angle > angles[1] - diagonal_angle)
-            {
-                drawMarker(imgOutput, bluePoints[0], Scalar(0, 255, 0), MARKER_CROSS);
-                drawMarker(imgOutput, bluePoints[1], Scalar(0, 0, 255), MARKER_CROSS);
-            }
-            else
-            {
-                drawMarker(imgOutput, bluePoints[1], Scalar(0, 255, 0), MARKER_CROSS);
-                drawMarker(imgOutput, bluePoints[0], Scalar(0, 0, 255), MARKER_CROSS);
-            }
-            cout << "angles: " << i << " " << angles[0] - diagonal_angle << " " << angles[1] - diagonal_angle << endl;
-            imshow("Result", imgOutput);
+            imshow("Result", imgOriginal);
             waitKey();
 
         }
