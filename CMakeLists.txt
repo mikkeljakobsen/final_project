@@ -14,9 +14,7 @@ if((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "GN
 endif()
 # Target executable
 add_executable(COLOR "color.cpp")
-add_executable(TEST "test.cpp")
 add_executable(Marker2 "marker2.cpp")
 
-target_link_libraries(TEST ${OpenCV_LIBS})
 target_link_libraries(COLOR ${OpenCV_LIBS})
 target_link_libraries(Marker2 ${OpenCV_LIBS})

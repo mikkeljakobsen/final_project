@@ -4,6 +4,7 @@
 // RobWork includes
 #include <rw/models/WorkCell.hpp>
 #include <rw/kinematics/State.hpp>
+#include <rw/kinematics.hpp>
 #include <rwlibs/opengl/RenderImage.hpp>
 #include <rwlibs/simulation/GLFrameGrabber.hpp>
 
@@ -18,6 +19,18 @@
 #include <QTimer>
 
 #include "ui_SamplePlugin.h"
+
+#include <vector>
+
+using namespace std;
+using namespace rw::common;
+using namespace rw::math;
+using namespace rw::graphics;
+using namespace rw::kinematics;
+using namespace rw::models;
+using namespace rw::sensor;
+using namespace rwlibs::opengl;
+using namespace rwlibs::simulation;
 
 class SamplePlugin: public rws::RobWorkStudioPlugin, private Ui::SamplePlugin
 {
@@ -49,6 +62,17 @@ private:
     rw::kinematics::State _state;
     rwlibs::opengl::RenderImage *_textureRender, *_bgRender;
     rwlibs::simulation::GLFrameGrabber* _framegrabber;
+    vector<Transform3D<double>> _markerTransforms;
+
+    const string _device_name = "PA10";
+    rw::models::Device::Ptr _device;
+
+    int _markerIndex = 0;
+    double _focalLength = 823;
+    double _z = 0.5;
+    double _delta_time = 1;
+
+    double _targetU1, _targetV1, _targetU2, _targetV2, _targetU3, _targetV3;
 };
 
 #endif /*RINGONHOOKPLUGIN_HPP_*/
