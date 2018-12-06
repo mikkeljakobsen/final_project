@@ -164,8 +164,10 @@ vector<Point2f> findColorMarkerPoints(Mat& imgOriginal)
     {
         for (size_t i=0; i<filenames.size(); i++)
         {
-            Mat imgOriginal = imread(filenames[i], IMREAD_COLOR);
 
+            //Mat imgOriginal = imread(filenames[i], IMREAD_COLOR);
+            Mat imgOriginal = imread("/media/mikkel/Windows/Users/mikke/Google Drev/Robotteknologi/Vision/final_project/SamplePluginPA10/markers/Marker1.ppm", IMREAD_COLOR);
+            cvtColor(imgOriginal, imgOriginal, CV_RGB2BGR);
             vector<Point2f> markerPoints = findColorMarkerPoints(imgOriginal);
             vector<Scalar> colors;
             colors.push_back(Scalar(255, 255, 255));

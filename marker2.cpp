@@ -265,7 +265,7 @@ vector<Point> findThinLineMarkerPoints(Mat& imgOriginal)
 int main()
 {
 
-    String folderpath = "../final_project/images/marker_thinline/marker_thinline_*.png";
+    String folderpath = "../final_project/images/marker_thinline_hard/marker_thinline_*.png";
     vector<String> filenames;
     glob(folderpath, filenames);
 
