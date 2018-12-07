@@ -43,23 +43,75 @@ vector<Transform3D<double>> loadMarkers(string path)
     return tempVector;
 }
 
-tuple<double, double> calcUV(MovableFrame* markerFrame, Frame* cameraFrame, Vector3D<double> posInMarkerFrame, State state, double focalLength, double z)
+vector<double> calcUV(MovableFrame* markerFrame, Frame* cameraFrame, vector<Vector3D<double>> posInMarkerFrame, State state, double focalLength, double z)
 {
-    rw::math::Vector3D<double> markerPosInCamFrame = cameraFrame->fTf(markerFrame, state)*posInMarkerFrame;
-    double u = (focalLength*markerPosInCamFrame[0])/z;
-    double v = (focalLength*markerPosInCamFrame[1])/z;
+    vector<double> uv;
+    for (int i = 0; i < posInMarkerFrame.size(); i++)
+    {
+        rw::math::Vector3D<double> markerPosInCamFrame = cameraFrame->fTf(markerFrame, state)*posInMarkerFrame[i];
+        uv.push_back((focalLength*markerPosInCamFrame[0])/z);
+        uv.push_back((focalLength*markerPosInCamFrame[1])/z);
+    }
 
-    return {u, v};
+    return uv;
 }
-
 
 Eigen::Matrix<double, 6, 6> calcImgJ(vector<double> uv, double z, double f)
 {
-    static const int numberOfMarkers = 3;//uv.size();
-    static constexpr int rows = 2*numberOfMarkers;
     Eigen::Matrix<double, 6, 6> J_img;
 
     for (int i = 0; i < 5; i = i+2)
+    {
+        double u = uv[i];
+        double v = uv[i+1];
+        J_img(i,0) = -f/z;
+        J_img(i,1) = 0.0;
+        J_img(i,2) = u/z;
+        J_img(i,3) = (u*v)/f;
+        J_img(i,4) = -(f*f+u*u)/f;
+        J_img(i,5) = v;
+        J_img(i+1,0) = 0.0;
+        J_img(i+1,1) = -f/z;
+        J_img(i+1,2) = v/z;
+        J_img(i+1,3) = (f*f+v*v)/f;
+        J_img(i+1,4) = -(u*v)/f;
+        J_img(i+1,5) = -u;
+    }
+
+    return J_img;
+}
+
+
+Eigen::Matrix<double, 8, 6> calcImgJVision(vector<double> uv, double z, double f)
+{
+    Eigen::Matrix<double, 8, 6> J_img;
+
+    for (int i = 0; i < 7; i = i+2)
+    {
+        double u = uv[i];
+        double v = uv[i+1];
+        J_img(i,0) = -f/z;
+        J_img(i,1) = 0.0;
+        J_img(i,2) = u/z;
+        J_img(i,3) = (u*v)/f;
+        J_img(i,4) = -(f*f+u*u)/f;
+        J_img(i,5) = v;
+        J_img(i+1,0) = 0.0;
+        J_img(i+1,1) = -f/z;
+        J_img(i+1,2) = v/z;
+        J_img(i+1,3) = (f*f+v*v)/f;
+        J_img(i+1,4) = -(u*v)/f;
+        J_img(i+1,5) = -u;
+    }
+
+    return J_img;
+}
+
+Eigen::Matrix<double, 2, 6> calcImgJSingle(vector<double> uv, double z, double f)
+{
+    Eigen::Matrix<double, 2, 6> J_img;
+
+    for (int i = 0; i < 1; i = i+2)
     {
         double u = uv[i];
         double v = uv[i+1];
@@ -124,6 +176,20 @@ rw::math::Q calcDeltaQ(Eigen::Matrix<double, 6, 7> Z, Eigen::Matrix<double, 6, 1
     return Q( ZInv*deltaU );
 }
 
+rw::math::Q calcDeltaQVision(Eigen::Matrix<double, 8, 7> Z, Eigen::Matrix<double, 8, 1> deltaU)
+{
+    Eigen::Matrix<double, 7, 8> ZInv = LinearAlgebra::pseudoInverse(Z);
+
+    return Q( ZInv*deltaU );
+}
+
+rw::math::Q calcDeltaQSingle(Eigen::Matrix<double, 2, 7> Z, Eigen::Matrix<double, 2, 1> deltaU)
+{
+    Eigen::Matrix<double, 7, 2> ZInv = LinearAlgebra::pseudoInverse(Z);
+
+    return Q( ZInv*deltaU );
+}
+
 double withinVelLimits(const rw::models::Device::Ptr device, rw::math::Q dq, double deltaTime)
 {
     rw::math::Q limits = device->getVelocityLimits();
@@ -158,56 +224,3 @@ rw::math::Q timeScaledQ(rw::math::Q deltaQ, double tauPrime)
 
     return newQ;
 }
-
-
-
-
-
-
-
-
-
-/*
-// This function calculates delta U as in Equation 4.13. The output class is a velocity screw as that is a 6D vector with a positional and rotational part
-// What a velocity screw really is is not important to this class. For our purposes it is only a container.
-rw::math::VelocityScrew6D<double> calculateDeltaU(const rw::math::Transform3D<double>& baseTtool, const rw::math::Transform3D<double>& baseTtool_desired) {
-    // Calculate the positional difference, dp
-    rw::math::Vector3D<double> dp = baseTtool_desired.P() - baseTtool.P();
-
-    // Calculate the rotational difference, dw
-    rw::math::EAA<double> dw(baseTtool_desired.R() * rw::math::inverse(baseTtool.R()));
-
-    return rw::math::VelocityScrew6D<double>(dp, dw);
-}
-
-// The inverse kinematics algorithm needs to know about the device, the tool frame and the desired pose. These parameters are const since they are not changed by inverse kinematics
-// We pass the state and the configuration, q, as value so we have copies that we can change as we want during the inverse kinematics.
-rw::math::Q algorithm1(const rw::models::Device::Ptr device, rw::kinematics::State state, const rw::kinematics::Frame* tool, const rw::math::Transform3D<double> baseTtool_desired, rw::math::Q q)
-{
-    // We need an initial base to tool transform and the positional error at the start (deltaU)
-    rw::math::Transform3D<> baseTtool = device->baseTframe(tool, state);
-    rw::math::VelocityScrew6D<double> deltaU = calculateDeltaU(baseTtool, baseTtool_desired);
-
-    // Epsilon is the desired tolerance on the final position.
-    const double epsilon = 0.0001;
-
-    while(deltaU.norm2() > epsilon) {
-        rw::math::Jacobian J = device->baseJframe(tool, state);
-
-        // Because this is NOT a 6 DOF robot but rather a 7 DOF we use the pseudoInverse.
-        rw::math::Jacobian Jinv = LinearAlgebra::pseudoInverse(J.e());
-
-        rw::math::Q deltaQ = Jinv*deltaU.e();
-
-        // Here we add the change in configuration to the current configuration and move the robot to that position.
-        q += deltaQ;
-        device->setQ(q, state);
-
-        // We need to calculate the forward dynamics again since the robot has been moved
-        baseTtool = device->baseTframe(tool, state); // This line performs the forward kinematics (Programming Exercise 3.4)
-
-        // Update the cartesian position error
-        deltaU = calculateDeltaU(baseTtool, baseTtool_desired);
-    }
-    return q;
-}*/
