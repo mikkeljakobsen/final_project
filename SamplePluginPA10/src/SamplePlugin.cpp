@@ -33,10 +33,10 @@ SamplePlugin::SamplePlugin():
 	connect(_btn1    ,SIGNAL(pressed()), this, SLOT(btnPressed()) );
     //connect(_spinBox  ,SIGNAL(valueChanged(int)), this, SLOT(btnPressed()) );
     connect(_markerBox, QOverload<const QString &>::of(&QComboBox::activated),
-            [=](const QString &text){ if (text == "Marker1"){_markerPath = "/home/quist/Documents/7-Semester/Rovi_Project/SamplePluginPA10/markers/Marker1.ppm";}
-        else if (text == "Marker2a"){_markerPath = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/markers/Marker2a.ppm";}
-        else if (text == "Marker2b"){_markerPath = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/markers/Marker2b.ppm";}
-        else if (text == "Marker4"){_markerPath = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/markers/Marker3.ppm";}
+            [=](const QString &text){ if (text == "Marker1"){_markerPath = _projectPath + "/SamplePluginPA10/markers/Marker1.ppm";}
+        else if (text == "Marker2a"){_markerPath = _projectPath + "/SamplePluginPA10/markers/Marker2a.ppm";}
+        else if (text == "Marker2b"){_markerPath = _projectPath + "/SamplePluginPA10/markers/Marker2b.ppm";}
+        else if (text == "Marker3"){_markerPath = _projectPath + "/SamplePluginPA10/markers/Marker3.ppm";}
         Image::Ptr image;
         image = ImageLoader::Factory::load(_markerPath);
         _textureRender->setImage(*image);
@@ -44,13 +44,13 @@ SamplePlugin::SamplePlugin():
     );
     connect(_backgroundBox, QOverload<const QString &>::of(&QComboBox::activated),
             [=](const QString &text){ string path;
-        if (text == "Color1"){path = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/backgrounds/color1.ppm";}
-        else if (text == "Color2"){path = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/backgrounds/color2.ppm";}
-        else if (text == "Color3"){path = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/backgrounds/color3.ppm";}
-        else if (text == "Lines1"){path = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/backgrounds/lines1.ppm";}
-        else if (text == "Texture1"){path = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/backgrounds/texture1.ppm";}
-        else if (text == "Texture2"){path = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/backgrounds/texture2.ppm";}
-        else if (text == "Texture3"){path = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/backgrounds/texture3.ppm";}
+        if (text == "Color1"){path = _projectPath + "/SamplePluginPA10/backgrounds/color1.ppm";}
+        else if (text == "Color2"){path = _projectPath + "/SamplePluginPA10/backgrounds/color2.ppm";}
+        else if (text == "Color3"){path = _projectPath + "/SamplePluginPA10/backgrounds/color3.ppm";}
+        else if (text == "Lines1"){path = _projectPath + "/SamplePluginPA10/backgrounds/lines1.ppm";}
+        else if (text == "Texture1"){path = _projectPath + "/SamplePluginPA10/backgrounds/texture1.ppm";}
+        else if (text == "Texture2"){path = _projectPath + "/SamplePluginPA10/backgrounds/texture2.ppm";}
+        else if (text == "Texture3"){path = _projectPath + "/SamplePluginPA10/backgrounds/texture3.ppm";}
         Image::Ptr image;
         image = ImageLoader::Factory::load(path);
         _bgRender->setImage(*image);
@@ -64,9 +64,9 @@ SamplePlugin::SamplePlugin():
     );
     connect(_motionSpeed, QOverload<const QString &>::of(&QComboBox::activated),
             [=](const QString &text){
-        if (text == "Slow Marker Motion"){_motionPath = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/motions/MarkerMotionSlow.txt";}
-        else if (text == "Medium Marker Motion"){_motionPath = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/motions/MarkerMotionMedium.txt";}
-        else if (text == "Fast Marker Motion"){_motionPath = "/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/motions/MarkerMotionFast.txt";}}
+        if (text == "Slow Marker Motion"){_motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionSlow.txt";}
+        else if (text == "Medium Marker Motion"){_motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionMedium.txt";}
+        else if (text == "Fast Marker Motion"){_motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionFast.txt";}}
     );
     connect(_spinBox  ,SIGNAL(valueChanged(int)), this, SLOT(btnPressed()) );
 
@@ -89,13 +89,13 @@ void SamplePlugin::initialize() {
 	getRobWorkStudio()->stateChangedEvent().add(std::bind(&SamplePlugin::stateChangedListener, this, _1), this);
 
 	// Auto load workcell
-    WorkCell::Ptr wc = WorkCellLoader::Factory::load("/home/quist/Documents/7-Semester/Rovi_Project/final_project/PA10WorkCell/ScenePA10RoVi1.wc.xml");
+    WorkCell::Ptr wc = WorkCellLoader::Factory::load(_projectPath + "/PA10WorkCell/ScenePA10RoVi1.wc.xml");
 	getRobWorkStudio()->setWorkCell(wc);
 
 
 	// Load Lena image
 	Mat im, image;
-    im = imread("/home/quist/Documents/7-Semester/Rovi_Project/final_project/SamplePluginPA10/src/lena.bmp", CV_LOAD_IMAGE_COLOR); // Read the file
+    im = imread(_projectPath + "/SamplePluginPA10/src/lena.bmp", CV_LOAD_IMAGE_COLOR); // Read the file
 	cvtColor(im, image, CV_BGR2RGB); // Switch the red and blue color channels
 	if(! image.data ) {
 		RW_THROW("Could not open or find the image: please modify the file path in the source code!");

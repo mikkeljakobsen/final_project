@@ -76,10 +76,11 @@ private:
     vector<double> _targetUV;
 
 
+    string _projectPath = "/home/quist/Documents/7-Semester/Rovi_Project/final_project"; // /media/mikkel/Windows/Users/mikke/Google Drev/Robotteknologi/Vision/final_project/final_project";
     string _markerPath;
     string _trackType = "3markers";
     string _tracker = "three markers";
-    string _motionPath = "/home/quist/Documents/7-Semester/Rovi_Project/SamplePluginPA10/motions/MarkerMotionSlow.txt";
+    string _motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionSlow.txt";
 };
 
 #endif /*RINGONHOOKPLUGIN_HPP_*/
