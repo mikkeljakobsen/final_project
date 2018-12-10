@@ -200,7 +200,6 @@ double withinVelLimits(const rw::models::Device::Ptr device, rw::math::Q dq, dou
     {
         if (abs(dq[i]/deltaTime) > limits[i])
         {
-            cout << "Limit of joint " << i << " is " << limits[i] << endl;
             double tempFactor = limits[i] / abs(dq[i]/deltaTime);
             cout << "Vel lim factor:" << tempFactor << endl << endl;
             if (tempFactor < exceedingFactor)
@@ -210,17 +209,20 @@ double withinVelLimits(const rw::models::Device::Ptr device, rw::math::Q dq, dou
         }
     }
 
+    if (exceedingFactor < 0.005)
+        return 0.0;
+
     return exceedingFactor;
 }
 
 rw::math::Q timeScaledQ(rw::math::Q deltaQ, double tauPrime)
 {
-    rw::math::Q newQ;
-
+    /*rw::math::Q newQ();
     for (size_t i = 0; i < deltaQ.size(); ++i)
     {
         newQ[i] = deltaQ[i]*tauPrime;
-    }
+    }*/
 
-    return newQ;
+    return deltaQ*tauPrime;;
+;
 }

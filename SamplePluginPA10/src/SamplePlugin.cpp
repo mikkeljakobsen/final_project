@@ -30,8 +30,7 @@ SamplePlugin::SamplePlugin():
 
 	// now connect stuff from the ui component
 	connect(_btn0    ,SIGNAL(pressed()), this, SLOT(btnPressed()) );
-	connect(_btn1    ,SIGNAL(pressed()), this, SLOT(btnPressed()) );
-    //connect(_spinBox  ,SIGNAL(valueChanged(int)), this, SLOT(btnPressed()) );
+    connect(_btn1    ,SIGNAL(pressed()), this, SLOT(btnPressed()) );
     connect(_markerBox, QOverload<const QString &>::of(&QComboBox::activated),
             [=](const QString &text){ if (text == "Marker1"){_markerPath = _projectPath + "/SamplePluginPA10/markers/Marker1.ppm";}
         else if (text == "Marker2a"){_markerPath = _projectPath + "/SamplePluginPA10/markers/Marker2a.ppm";}
@@ -68,7 +67,7 @@ SamplePlugin::SamplePlugin():
         else if (text == "Medium Marker Motion"){_motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionMedium.txt";}
         else if (text == "Fast Marker Motion"){_motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionFast.txt";}}
     );
-    connect(_spinBox  ,SIGNAL(valueChanged(int)), this, SLOT(btnPressed()) );
+    connect(_spinBox  ,SIGNAL(valueChanged(double)), this, SLOT(btnPressed()) );
 
 	Image textureImage(300,300,Image::GRAY,Image::Depth8U);
 	_textureRender = new RenderImage(textureImage);
@@ -190,6 +189,14 @@ void SamplePlugin::btnPressed() {
 		// Toggle the timer on and off
 		if (!_timer->isActive())
         {
+            _delta_time = _spinBox->value();// - 0.06; // max computation time of vision algorithm from exercise 1
+            string filenameq = "qFile_" + _trackType + "_" + _motionPath.substr(97,4) + "_" + to_string(_delta_time) + ".csv";
+            qFile.open (filenameq);
+            string filenametool = "toolPosFile_" + _trackType + "_"  + _motionPath.substr(97,4) + "_"  + to_string(_delta_time) + ".csv";
+            toolPosFile.open (filenametool);
+            string filenameerror = "trackErrorFile_" + _trackType + "_"  + _motionPath.substr(97,4) + "_"  + to_string(_delta_time) + ".csv";
+            trackErrorFile.open (filenameerror);
+
             _markerTransforms = loadMarkers(_motionPath);
             _markerIndex = 0;
 
@@ -230,7 +237,7 @@ void SamplePlugin::btnPressed() {
             }
 
             if (!_timer->isActive())
-                _timer->start(100); // run 10 Hz
+                _timer->start(10); // run 10 Hz
             else
             {
                 _timer->stop();
@@ -256,18 +263,32 @@ void SamplePlugin::btnPressed() {
 
 void SamplePlugin::timer() {
 	if (_framegrabber != NULL) {
+        vector<double> trackError;
+
         if (_markerIndex >= _markerTransforms.size())
         {
-            _timer->stop();
-            return;
-        }
+            //_timer->stop();
+            qFile.close();
+            toolPosFile.close();
+            trackErrorFile.close();
+            cout << "dt: " << _delta_time << " ";
+            cout << "files saved" << endl;
+            trackError.clear();
 
+            reRunMotion();
+
+            if (_delta_time < 0.01)
+            {
+                _timer->stop();
+                return;
+            }
+        }
 
         // Move the marker!
         auto markerTransform = _markerTransforms[_markerIndex];
         _markerIndex++;
         MovableFrame* markerFrame = (MovableFrame*)_wc->findFrame("Marker");
-        markerFrame->setTransform(markerTransform, _state);
+
 
         Frame* camFrame = _wc->findFrame("Camera");
 
@@ -290,6 +311,47 @@ void SamplePlugin::timer() {
         unsigned int maxW = 400;
         unsigned int maxH = 800;
         _label->setPixmap(p.scaled(maxW,maxH,Qt::KeepAspectRatio));
+
+        if (_tracker == "three markers" && _markerIndex != 0)
+        {
+            vector<Vector3D<double>> markerPoints;
+            markerPoints.emplace_back(Vector3D<double>(0.15, 0.15, 0));
+            markerPoints.emplace_back(Vector3D<double>(-0.15, 0.15, 0));
+            markerPoints.emplace_back(Vector3D<double>(0.15, -0.15, 0));
+            vector<double> uv = calcUV(markerFrame, camFrame, markerPoints, _state, _focalLength, _z);
+            for (int i = 0; i < 6; i++)
+                trackError.push_back(_targetUV[i]-uv[i]);
+
+        }// Following Vision tracked markers
+        else if (_tracker == "vision"  && _markerIndex != 0)
+        {
+            vector<Point2f> markerPoints = findColorMarkerPoints(im);
+
+            vector<double> uv = calcUVVision(markerPoints, im);
+            for (int i = 0; i < 8; i++)
+                trackError.push_back(_targetUV[i]-uv[i]);
+
+        }// Following a single marker
+        else if (_tracker == "single marker" && _markerIndex != 0)
+        {
+            vector<Vector3D<double>> markerPoints;
+            markerPoints.emplace_back(Vector3D<double>(0, 0, 0));
+            vector<double> uv = calcUV(markerFrame, camFrame, markerPoints, _state, _focalLength, _z);
+            for (int i = 0; i < 2; i++)
+                trackError.push_back(_targetUV[i]-uv[i]);
+
+        }
+
+
+
+
+
+
+
+
+
+        markerFrame->setTransform(markerTransform, _state);
+
 
         // Following hardcoded path with 3 markers
         if (_tracker == "three markers")
@@ -340,7 +402,7 @@ void SamplePlugin::timer() {
 
             Eigen::Matrix<double, 2, 1> deltaU;
             for (int i = 0; i < 2; i++)
-                deltaU(i,0) = _targetU1-uv[i];
+                deltaU(i,0) = _targetUV[i]-uv[i];
 
             Eigen::Matrix<double, 2, 6> J_img = calcImgJSingle(uv, _z, _focalLength);
 
@@ -359,17 +421,104 @@ void SamplePlugin::timer() {
             rw::math::Q newQ = _device->getQ(_state)+deltaQ;
             _device->setQ(newQ, _state);
 		}
-		else
+        else if (velLim == 0.0)
+        {
+           cout << "UNABLE TO TRACK" << endl;
+           _markerIndex = _markerTransforms.size();
+           qFile << "vel limits exceeded";
+           toolPosFile << "vel limits exceeded";
+           trackErrorFile << "vel limits exceeded";
+        }
+        else
 		{
             rw::math::Q newQ = _device->getQ(_state)+timeScaledQ(deltaQ, velLim);
             _device->setQ(newQ, _state);
         }
 
+        rw::math::Q curQ = _device->getQ(_state);
+        for (int i = 0; i < curQ.size()-1; i++)
+        {
+            qFile << to_string(curQ[i]);
+            qFile << ",";
+        }
+        qFile << to_string(curQ[curQ.size()-1]);
+        qFile << endl;
 
+        Transform3D<> wTcam = camFrame->wTf(_state);
+        toolPosFile << wTcam.P()[0];
+        toolPosFile << ",";
+        toolPosFile << wTcam.P()[1];
+        toolPosFile << ",";
+        toolPosFile << wTcam.P()[2];
+        toolPosFile << endl;
+
+        if (_markerIndex != 0)
+        {
+            for (int i = 0; i < trackError.size(); i++)
+            {
+                trackErrorFile << trackError[i];
+                trackErrorFile << ",";
+            }
+        }
         getRobWorkStudio()->setState(_state);
 	}
 }
 
 void SamplePlugin::stateChangedListener(const State& state) {
   _state = state;
+}
+
+void SamplePlugin::reRunMotion()
+{
+    _delta_time -= 0.05;
+    if (_delta_time < 0.01)
+        return;
+
+    string filenameq = "qFile_" + _trackType + "_" + _motionPath.substr(97,4) + "_" + to_string(_delta_time) + ".csv";
+    qFile.open (filenameq);
+    string filenametool = "toolPosFile_" + _trackType + "_"  + _motionPath.substr(97,4) + "_"  + to_string(_delta_time) + ".csv";
+    toolPosFile.open (filenametool);
+    string filenameerror = "trackErrorFile_" + _trackType + "_"  + _motionPath.substr(97,4) + "_"  + to_string(_delta_time) + ".csv";
+    trackErrorFile.open (filenameerror);
+
+    _markerTransforms = loadMarkers(_motionPath);
+    _markerIndex = 0;
+
+    Frame* camFrame = _wc->findFrame("Camera");
+    MovableFrame* markerFrame = (MovableFrame*)_wc->findFrame("Marker");
+    markerFrame->setTransform(_markerTransforms[_markerIndex], _state);
+
+    Q start(7, 0, -0.65, 0, 1.8, 0, 0.42, 0);
+    _device->setQ(start, _state);
+    getRobWorkStudio()->setState(_state);
+
+    if (_trackType == "3markers")
+    {   _tracker = "three markers";
+        vector<Vector3D<double>> markerPoints;
+        markerPoints.emplace_back(Vector3D<double>(0.15, 0.15, 0));
+        markerPoints.emplace_back(Vector3D<double>(-0.15, 0.15, 0));
+        markerPoints.emplace_back(Vector3D<double>(0.15, -0.15, 0));
+        _targetUV = calcUV(markerFrame, camFrame, markerPoints, _state, _focalLength, _z);
+    }
+    else if (_trackType == "vis")
+    {   _tracker = "vision";
+        Frame* cameraFrame = _wc->findFrame("CameraSim");
+        _framegrabber->grab(cameraFrame, _state);
+        const Image& image = _framegrabber->getImage();
+        // Convert to OpenCV image
+        Mat im = toOpenCVImage(image);
+        Mat imflip;
+        cv::flip(im, imflip, 0);
+
+        vector<Point2f> markerPoints = findColorMarkerPoints(im);
+        _targetUV = calcUVVision(markerPoints, im);
+    }
+    else if (_trackType == "1marker")
+    {   _tracker = "single marker";
+        vector<Vector3D<double>> markerPoints;
+        markerPoints.emplace_back(Vector3D<double>(0, 0, 0));
+        _targetUV = calcUV(markerFrame, camFrame, markerPoints, _state, _focalLength, _z);
+    }
+
+    return;
 }

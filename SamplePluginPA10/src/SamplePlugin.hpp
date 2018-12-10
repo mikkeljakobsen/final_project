@@ -70,7 +70,7 @@ private:
     int _markerIndex = 0;
     double _focalLength = 823;
     double _z = 0.5;
-    double _delta_time = 0.1;
+    double _delta_time = 1.0;
 
     double _targetU1, _targetV1, _targetU2, _targetV2, _targetU3, _targetV3;
     vector<double> _targetUV;
@@ -81,6 +81,12 @@ private:
     string _trackType = "3markers";
     string _tracker = "three markers";
     string _motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionSlow.txt";
+
+    ofstream qFile;
+    ofstream toolPosFile;
+    ofstream trackErrorFile;
+
+    void reRunMotion();
 };
 
 #endif /*RINGONHOOKPLUGIN_HPP_*/
