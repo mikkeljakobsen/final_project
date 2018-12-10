@@ -215,12 +215,5 @@ double withinVelLimits(const rw::models::Device::Ptr device, rw::math::Q dq, dou
 
 rw::math::Q timeScaledQ(rw::math::Q deltaQ, double tauPrime)
 {
-    rw::math::Q newQ;
-
-    for (size_t i = 0; i < deltaQ.size(); ++i)
-    {
-        newQ[i] = deltaQ[i]*tauPrime;
-    }
-
-    return newQ;
+    return deltaQ*tauPrime;
 }

@@ -60,7 +60,12 @@ SamplePlugin::SamplePlugin():
             [=](const QString &text){
         if (text == "Three Markers"){_trackType = "3markers";}
         else if (text == "Single Marker"){_trackType = "1marker";}
-        else if (text == "Vision"){_trackType = "vis";}}
+        else if (text == "Vision"){_trackType = "vis";
+            _markerPath = _projectPath + "/SamplePluginPA10/markers/Marker1.ppm";
+            Image::Ptr image;
+            image = ImageLoader::Factory::load(_markerPath);
+            _textureRender->setImage(*image);
+            getRobWorkStudio()->updateAndRepaint();}}
     );
     connect(_motionSpeed, QOverload<const QString &>::of(&QComboBox::activated),
             [=](const QString &text){
@@ -68,7 +73,7 @@ SamplePlugin::SamplePlugin():
         else if (text == "Medium Marker Motion"){_motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionMedium.txt";}
         else if (text == "Fast Marker Motion"){_motionPath = _projectPath + "/SamplePluginPA10/motions/MarkerMotionFast.txt";}}
     );
-    connect(_spinBox  ,SIGNAL(valueChanged(int)), this, SLOT(btnPressed()) );
+    connect(_spinBox  ,SIGNAL(valueChanged(double)), this, SLOT(btnPressed()) );
 
 	Image textureImage(300,300,Image::GRAY,Image::Depth8U);
 	_textureRender = new RenderImage(textureImage);
